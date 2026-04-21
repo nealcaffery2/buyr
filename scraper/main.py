@@ -38,7 +38,10 @@ def get_supabase_client() -> Client:
 
 
 def verify_secret(x_api_secret: str = Header(default="")):
-    if settings.api_secret and x_api_secret != settings.api_secret:
+    if not settings.api_secret:
+        # Misconfiguration: refuse to serve rather than letting anyone in.
+        raise HTTPException(status_code=500, detail="API_SECRET not configured")
+    if x_api_secret != settings.api_secret:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
