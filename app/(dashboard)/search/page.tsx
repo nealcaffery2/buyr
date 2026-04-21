@@ -93,12 +93,16 @@ export default function SearchPage() {
       return;
     }
 
-    const res = await fetch(`${scraperUrl}/api/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address, search_id: row.id }),
-    });
-    if (!res.ok) setState("error");
+    try {
+      const res = await fetch(`${scraperUrl}/api/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, search_id: row.id }),
+      });
+      if (!res.ok) setState("error");
+    } catch {
+      setState("error");
+    }
   }
 
   // UI preview mode when scraper isn't deployed yet

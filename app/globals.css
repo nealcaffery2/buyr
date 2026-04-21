@@ -68,3 +68,11 @@
   .delay-8  { animation-delay: 480ms; }
   .delay-9  { animation-delay: 540ms; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-slide-in-right {
+    animation: none;
+  }
+}

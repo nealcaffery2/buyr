@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { Save, Eye, EyeOff } from "lucide-react";
 
 type ApiKeys = {
@@ -37,7 +36,6 @@ const EMPTY: ApiKeys = {
 };
 
 export function ApiKeyForm() {
-  const supabase = createBrowserClient();
   const [keys, setKeys] = useState<ApiKeys>(EMPTY);
   const [visible, setVisible] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -45,15 +43,15 @@ export function ApiKeyForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("team_api_keys")
-      .select("*")
-      .eq("id", "team")
-      .single()
-      .then(({ data }) => {
-        if (data) setKeys({ ...EMPTY, ...data });
-      });
-  }, [supabase]);
+    fetch("/api/team-keys")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object") {
+          setKeys((prev) => ({ ...prev, ...data }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function toggleVisible(key: string) {
     setVisible((prev) => {
@@ -67,17 +65,24 @@ export function ApiKeyForm() {
     e.preventDefault();
     setSaving(true);
 
-    const { error: err } = await supabase
-      .from("team_api_keys")
-      .upsert({ id: "team", ...keys, updated_at: new Date().toISOString() }, { onConflict: "id" });
-
-    setSaving(false);
-    if (err) {
-      setError(`Save failed: ${err.message}`);
-    } else {
-      setError(null);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+    try {
+      const res = await fetch("/api/team-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(keys),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(`Save failed: ${data.error ?? res.statusText}`);
+      } else {
+        setError(null);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -89,7 +94,7 @@ export function ApiKeyForm() {
       <div>
         <h2 className="text-white font-medium mb-1">API Keys</h2>
         <p className="text-slate-400 text-sm">
-          Shared across your team. Stored in your Supabase project.
+          Shared across your team. Requires <code className="text-blue-400">SUPABASE_SERVICE_ROLE_KEY</code> on the server.
         </p>
       </div>
 
