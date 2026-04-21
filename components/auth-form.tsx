@@ -30,6 +30,7 @@ export function AuthForm() {
       } else {
         router.push("/search");
         router.refresh();
+        return; // keep loading=true during navigation
       }
     } else {
       const { error } = await supabase.auth.signUp({ email, password });

@@ -67,8 +67,9 @@ class PublicSearchScraper(CountyScraper):
                         )
                     )
 
-                total = data.get("total", 0)
-                if page * 100 >= total:
+                total = data.get("total")
+                # If total is absent or we've fetched all pages, stop
+                if total is None or len(hits) < 100 or page * 100 >= total:
                     break
                 page += 1
                 await self._sleep_random(0.5, 1.5)

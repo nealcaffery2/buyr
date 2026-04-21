@@ -1,13 +1,17 @@
 """Mecklenburg/Guilford/Forsyth/Durham NC Register of Deeds — NC ROD platform."""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
+
+logger = logging.getLogger(__name__)
 
 COUNTY_URLS = {
     "mecklenburg": "https://register.mecklenburgcountync.gov",
     "guilford": "https://www.guilforddeeds.com",
     "forsyth": "https://www.forsythdeeds.com",
-    "durham": "https://www.dconc.gov/government/departments-f-z/register-of-deeds",
+    # Durham's recorder search lives under a dedicated subdomain
+    "durham": "https://rod.dconc.gov",
 }
 
 
@@ -52,6 +56,6 @@ class MecklenburgNCScraper(CountyScraper):
                         deed_type="DEED",
                         source_url=f"{base}/search",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("MecklenburgNC scraper failed for %r (%s): %s", grantor_name, self.county, exc)
         return results

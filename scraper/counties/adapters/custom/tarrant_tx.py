@@ -1,11 +1,11 @@
-"""
-Tarrant County TX — taxonline.tarrantcounty.com
-"""
+"""Tarrant County TX — taxonline.tarrantcounty.com"""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://taxonline.tarrantcounty.com"
+logger = logging.getLogger(__name__)
 
 
 class TarrantTXScraper(CountyScraper):
@@ -22,8 +22,7 @@ class TarrantTXScraper(CountyScraper):
                 )
                 resp.raise_for_status()
                 soup = BeautifulSoup(resp.text, "lxml")
-                rows = soup.select("table tbody tr")
-                for row in rows:
+                for row in soup.select("table tbody tr"):
                     cells = [td.get_text(strip=True) for td in row.find_all("td")]
                     if len(cells) < 3:
                         continue
@@ -41,6 +40,6 @@ class TarrantTXScraper(CountyScraper):
                         deed_type="DEED",
                         source_url=f"{BASE}/TaxPayer/search",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("TarrantTX scraper failed for %r: %s", grantor_name, exc)
         return results

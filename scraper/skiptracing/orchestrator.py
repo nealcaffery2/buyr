@@ -27,7 +27,7 @@ async def get_contacts(
     if bd_key:
         if agent_name:
             results = await skip_trace_name(agent_name, agent_address, bd_key)
-        if not results:
+        if not any(r.phone for r in results):
             results = await skip_trace_llc(llc_name, state, bd_key)
 
     # 2. PropStream — if BatchData had no phones

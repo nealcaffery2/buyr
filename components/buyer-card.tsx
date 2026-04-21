@@ -32,9 +32,10 @@ export function BuyerCard({ rank, buyer }: { rank: number; buyer: Buyer }) {
       .filter(Boolean)
       .join(", ");
     const text = [buyer.name, phones, emails].filter(Boolean).join("\n");
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   return (

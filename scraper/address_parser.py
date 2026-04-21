@@ -85,4 +85,6 @@ def _heuristic_parse(address: str) -> tuple[str, str]:
                 state = abbr
                 break
 
-    return ("unknown", state or "TX")
+    if not state:
+        raise ValueError(f"Could not determine state from address: {address!r}")
+    return ("unknown", state)

@@ -35,7 +35,7 @@ class SpatialEstScraper(CountyScraper):
                 except (ValueError, TypeError):
                     sale_price = None
 
-                if not owner:
+                if not owner or owner.upper().strip() == grantor_name.upper().strip():
                     continue
 
                 results.append(

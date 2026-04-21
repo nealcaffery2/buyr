@@ -1,9 +1,11 @@
 """Duval County FL — oncore.duvalclerk.com"""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://oncore.duvalclerk.com"
+logger = logging.getLogger(__name__)
 
 
 class DuvalFLScraper(CountyScraper):
@@ -38,6 +40,6 @@ class DuvalFLScraper(CountyScraper):
                         deed_type=cells[3] if len(cells) > 3 else "DEED",
                         source_url=f"{BASE}/search/SearchTypeName",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("DuvalFL scraper failed for %r: %s", grantor_name, exc)
         return results

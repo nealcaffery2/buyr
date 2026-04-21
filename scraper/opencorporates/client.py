@@ -3,9 +3,12 @@ OpenCorporates API client.
 Free tier: 500 requests/day. Paid: unlimited.
 Endpoint: GET /v0.4/companies/search
 """
+import logging
 import httpx
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 BASE = "https://api.opencorporates.com/v0.4"
 
@@ -56,7 +59,8 @@ async def lookup_company(
             resp = await client.get(f"{BASE}/companies/search", params=params)
             resp.raise_for_status()
             data = resp.json()
-        except Exception:
+        except Exception as exc:
+            logger.warning("OpenCorporates lookup failed for %r (%s): %s", company_name, state, exc)
             return LLCInfo(name=company_name, state=state)
 
     companies = data.get("results", {}).get("companies", [])

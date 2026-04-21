@@ -45,10 +45,13 @@ export function WholesalerUpload() {
           row["state"] ||
           Object.values(row)[1] ||
           "";
-        if (name?.trim()) {
+        const stateRaw = String(state).trim().toUpperCase();
+        // Reject full state names and anything that isn't exactly 2 alpha chars
+        const stateCode = /^[A-Z]{2}$/.test(stateRaw) ? stateRaw : "";
+        if (name?.trim() && stateCode) {
           wholesalers.push({
             name: String(name).trim(),
-            state: String(state).trim().toUpperCase().slice(0, 2),
+            state: stateCode,
           });
         }
       }

@@ -1,8 +1,10 @@
 """Jackson County MO Recorder of Deeds."""
+import logging
 from playwright.async_api import async_playwright
 from ...base import CountyScraper, Transaction
 
 BASE = "https://recorder.jacksongov.org"
+logger = logging.getLogger(__name__)
 
 
 class JacksonMOScraper(CountyScraper):
@@ -10,6 +12,10 @@ class JacksonMOScraper(CountyScraper):
     base_url = BASE
 
     async def search_grantor(self, grantor_name: str) -> list[Transaction]:
+        if not grantor_name or not grantor_name.strip():
+            logger.warning("JacksonMO: empty grantor_name — skipping")
+            return []
+
         results: list[Transaction] = []
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -17,9 +23,13 @@ class JacksonMOScraper(CountyScraper):
             try:
                 await page.goto(f"{BASE}/search", timeout=30000)
                 await page.wait_for_load_state("networkidle", timeout=15000)
-                name_input = await page.query_selector("input[name*='grantor'], input[placeholder*='Grantor'], input[id*='grantor']")
-                if name_input:
-                    await name_input.fill(grantor_name)
+                name_input = await page.query_selector(
+                    "input[name*='grantor'], input[placeholder*='Grantor'], input[id*='grantor']"
+                )
+                if not name_input:
+                    logger.warning("JacksonMO: could not find grantor input field")
+                    return []
+                await name_input.fill(grantor_name)
                 await page.click("button:has-text('Search'), input[value='Search']")
                 await page.wait_for_load_state("networkidle", timeout=20000)
                 rows = await page.query_selector_all("table tbody tr")
@@ -42,8 +52,8 @@ class JacksonMOScraper(CountyScraper):
                         deed_type="DEED",
                         source_url=page.url,
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("JacksonMO scraper failed for %r: %s", grantor_name, exc)
             finally:
                 await browser.close()
         return results

@@ -1,8 +1,10 @@
 """Hillsborough County FL Official Records."""
+import logging
 from playwright.async_api import async_playwright
 from ...base import CountyScraper, Transaction
 
 BASE = "https://pubrec.hillsclerk.com/oncore"
+logger = logging.getLogger(__name__)
 
 
 class HillsboroughFLScraper(CountyScraper):
@@ -40,8 +42,8 @@ class HillsboroughFLScraper(CountyScraper):
                         deed_type=texts[3].strip() if len(texts) > 3 else "DEED",
                         source_url=page.url,
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("HillsboroughFL scraper failed for %r: %s", grantor_name, exc)
             finally:
                 await browser.close()
         return results

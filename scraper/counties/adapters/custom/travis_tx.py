@@ -1,9 +1,11 @@
 """Travis County TX — tccsearch.org"""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://www.tccsearch.org"
+logger = logging.getLogger(__name__)
 
 
 class TravisTXScraper(CountyScraper):
@@ -23,13 +25,12 @@ class TravisTXScraper(CountyScraper):
                 )
                 resp.raise_for_status()
                 soup = BeautifulSoup(resp.text, "lxml")
-                rows = soup.select("table#dgResults tr:not(:first-child)")
-                for row in rows:
+                for row in soup.select("table#dgResults tr:not(:first-child)"):
                     cells = [td.get_text(strip=True) for td in row.find_all("td")]
                     if len(cells) < 4:
                         continue
                     grantee = cells[1] if len(cells) > 1 else ""
-                    if not grantee:
+                    if not grantee or grantee.upper() == grantor_name.upper():
                         continue
                     price_raw = cells[5].replace("$", "").replace(",", "") if len(cells) > 5 else ""
                     try:
@@ -47,6 +48,6 @@ class TravisTXScraper(CountyScraper):
                         deed_type=cells[4] if len(cells) > 4 else "DEED",
                         source_url=f"{BASE}/RealEstate/SearchEntry.aspx",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("TravisTX scraper failed for %r: %s", grantor_name, exc)
         return results

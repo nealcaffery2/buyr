@@ -1,10 +1,12 @@
 """
 Collin/Kaufman/Rockwall/Grayson TX — esearch CAD platform.
-These counties share the same search platform structure.
 """
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
+
+logger = logging.getLogger(__name__)
 
 CAD_URLS = {
     "collin": "https://esearch.collincad.org",
@@ -31,7 +33,6 @@ class CollinTXScraper(CountyScraper):
                     params={"type": "owner", "q": grantor_name, "limit": 100},
                 )
                 if not resp.is_success:
-                    # Try HTML form fallback
                     resp = await client.get(base + "/", params={"search": grantor_name})
                 resp.raise_for_status()
 
@@ -71,6 +72,6 @@ class CollinTXScraper(CountyScraper):
                                 deed_type="DEED",
                                 source_url=base,
                             ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("CollinTX scraper failed for %r (%s): %s", grantor_name, self.county, exc)
         return results

@@ -96,22 +96,40 @@ REGISTRY: dict[tuple[str, str], type[CountyScraper]] = {
 
 # Per-county base_url overrides for multi-county adapters
 COUNTY_URLS: dict[tuple[str, str], str] = {
+    # PublicSearch
     ("dallas", "TX"): "https://dallas.tx.publicsearch.us",
     ("bexar", "TX"): "https://bexar.tx.publicsearch.us",
+    # Tyler
     ("pima", "AZ"): "https://pimacountyaz-web.tylerhost.net",
     ("el paso", "CO"): "https://publicrecordsearch.elpasoco.com",
     ("knox", "TN"): "https://propertyinfo.knoxcountytn.gov",
     ("davidson", "TN"): "https://portal.padctn.org",
     ("hamilton", "TN"): "https://assessor.hamiltontn.gov",
+    # KoFile
     ("denver", "CO"): "https://countyfusion3.kofiletech.us",
+    # Acclaim
     ("tulsa", "OK"): "https://acclaim.tulsacounty.org",
+    # SpatialEst
     ("cleveland", "OK"): "https://personal.spatialest.com/ok/cleveland",
     ("canadian", "OK"): "https://property.spatialest.com/ok/canadian",
-    ("jefferson", "AL"): "https://www.jeffersonprobate.com",  # Landmark
-    ("lee", "FL"): "https://or.leeclerk.org/LandMarkWeb",
+    # GSCCCA
     ("fulton", "GA"): "https://search.gsccca.org",
     ("chatham", "GA"): "https://www.chathamtax.org",
+    # Fidlar
     ("marion", "IN"): "https://inmarion.fidlar.com",
+    # Landmark — every county using LandmarkScraper must have a URL here
+    ("jefferson", "AL"): "https://landmark.jeffersonprobate.com/LandMarkWeb",
+    ("madison", "AL"): "https://madisonproperty.countygovservices.com/LandMarkWeb",
+    ("lee", "FL"): "https://or.leeclerk.org/LandMarkWeb",
+    ("st. louis", "MO"): "https://stlouiscounty.recorderofdeeds.com/LandMarkWeb",
+    ("st. charles", "MO"): "https://stcharlescounty.recorderofdeeds.com/LandMarkWeb",
+    ("richland", "SC"): "https://rod.richlandcountysc.gov/LandMarkWeb",
+    ("greenville", "SC"): "https://www.greenvillecounty.org/rod/LandMarkWeb",
+    ("charleston", "SC"): "https://www.charlestoncounty.org/departments/rod/LandMarkWeb",
+    ("pulaski", "AR"): "https://www.pulaskiclerk.com/LandMarkWeb",
+    ("lonoke", "AR"): "https://lonokeclerk.com/LandMarkWeb",
+    ("wyandotte", "KS"): "https://www.wycokck.org/rod/LandMarkWeb",
+    # Custom
     ("shelby", "TN"): "https://search.register.shelby.tn.us",
 }
 

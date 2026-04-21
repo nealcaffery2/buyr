@@ -1,9 +1,11 @@
 """Jefferson County KY Deed Search — search.jeffersondeeds.com"""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://search.jeffersondeeds.com"
+logger = logging.getLogger(__name__)
 
 
 class JeffersonKYScraper(CountyScraper):
@@ -43,6 +45,6 @@ class JeffersonKYScraper(CountyScraper):
                         deed_type=cells[0],
                         source_url=f"{BASE}/name.php",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("JeffersonKY scraper failed for %r: %s", grantor_name, exc)
         return results

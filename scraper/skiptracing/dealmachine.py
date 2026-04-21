@@ -51,9 +51,10 @@ async def skip_trace_person(
             return []
 
     results: list[DealMachineContact] = []
-    for person in data.get("people", data.get("results", [])):
-        phones = person.get("phones", [person.get("phone")])
-        emails = person.get("emails", [person.get("email")])
+    people = data.get("people") or data.get("results") or []
+    for person in people:
+        phones = person.get("phones") or ([person.get("phone")] if person.get("phone") else [])
+        emails = person.get("emails") or ([person.get("email")] if person.get("email") else [])
 
         phone = next((p for p in phones if p), None)
         email = next((e for e in emails if e), None)

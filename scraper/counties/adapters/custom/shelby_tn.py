@@ -1,9 +1,11 @@
 """Shelby County TN Register of Deeds — search.register.shelby.tn.us"""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://search.register.shelby.tn.us"
+logger = logging.getLogger(__name__)
 
 
 class ShelbyTNScraper(CountyScraper):
@@ -43,6 +45,6 @@ class ShelbyTNScraper(CountyScraper):
                         deed_type="DEED",
                         source_url=f"{BASE}/search/index.php",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("ShelbyTN scraper failed for %r: %s", grantor_name, exc)
         return results

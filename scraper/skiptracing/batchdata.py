@@ -62,7 +62,8 @@ async def skip_trace_name(
             return []
 
     results: list[SkipTraceResult] = []
-    for person in data.get("results", [{}])[0].get("persons", []):
+    api_results = data.get("results") or []
+    for person in (api_results[0].get("persons", []) if api_results else []):
         phones = person.get("phones", [])
         emails = person.get("emails", [])
         addr = person.get("addresses", [{}])

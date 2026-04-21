@@ -1,8 +1,11 @@
 """Maricopa County AZ Recorder — uses their public document search API."""
+import logging
 import httpx
+from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://recorder.maricopa.gov"
+logger = logging.getLogger(__name__)
 
 
 class MaricopaAZScraper(CountyScraper):
@@ -22,7 +25,6 @@ class MaricopaAZScraper(CountyScraper):
                     },
                 )
                 resp.raise_for_status()
-                from bs4 import BeautifulSoup
                 soup = BeautifulSoup(resp.text, "lxml")
                 for row in soup.select("table#grdResults tr:not(:first-child)"):
                     cells = [td.get_text(strip=True) for td in row.find_all("td")]
@@ -47,6 +49,6 @@ class MaricopaAZScraper(CountyScraper):
                         deed_type=cells[4] if len(cells) > 4 else "DEED",
                         source_url=f"{BASE}/webrecordingSearch/search.aspx",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("MaricopaAZ scraper failed for %r: %s", grantor_name, exc)
         return results

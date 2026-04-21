@@ -3,9 +3,12 @@ Buyr — Wholesaler Sniping Tool — FastAPI Backend
 Run: uvicorn main:app --reload
 """
 import asyncio
+import logging
 from datetime import date
 from collections import defaultdict
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,8 +103,8 @@ async def pipeline(req: SearchRequest):
                         all_transactions.append(row)
                     if txns:
                         supabase.table("transactions").upsert(txns_to_rows(txns, county, state)).execute()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Scraper error for wholesaler %r in %s/%s: %s", ws_name, county, state, exc)
                 pct = 30 + int((i + 1) * pct_per_ws)
                 await _update(sid, "searching_county_records", min(pct, 50))
                 await asyncio.sleep(1.2)

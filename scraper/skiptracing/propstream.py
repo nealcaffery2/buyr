@@ -35,6 +35,8 @@ async def _get_token(email: str, password: str) -> str:
         resp.raise_for_status()
         data = resp.json()
         token = data.get("token") or data.get("access_token") or data.get("jwt", "")
+        if not token:
+            raise ValueError("PropStream auth succeeded but returned no token")
         _token_cache[cache_key] = token
         return token
 

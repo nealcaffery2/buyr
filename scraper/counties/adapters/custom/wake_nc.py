@@ -1,9 +1,11 @@
 """Wake County NC Register of Deeds."""
+import logging
 import httpx
 from bs4 import BeautifulSoup
 from ...base import CountyScraper, Transaction
 
 BASE = "https://services.wakegov.com/booksweb"
+logger = logging.getLogger(__name__)
 
 
 class WakeNCScraper(CountyScraper):
@@ -18,7 +20,7 @@ class WakeNCScraper(CountyScraper):
                     f"{BASE}/NameSearch.asp",
                     data={
                         "SearchName": grantor_name,
-                        "SearchType": "G",  # G = Grantor
+                        "SearchType": "G",
                         "DOCTYPE": "DEED",
                         "Submit": "Search",
                     },
@@ -43,6 +45,6 @@ class WakeNCScraper(CountyScraper):
                         deed_type="DEED",
                         source_url=f"{BASE}/NameSearch.asp",
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("WakeNC scraper failed for %r: %s", grantor_name, exc)
         return results

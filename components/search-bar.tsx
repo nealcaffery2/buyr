@@ -26,6 +26,7 @@ export function SearchBar({
         />
         <input
           type="text"
+          aria-label="Property address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="11206 Cape Primrose San Antonio TX"

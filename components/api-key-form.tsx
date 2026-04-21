@@ -62,6 +62,7 @@ export function ApiKeyForm() {
   const [visible, setVisible] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function toggleVisible(key: string) {
     setVisible((prev) => {
@@ -77,16 +78,23 @@ export function ApiKeyForm() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      return;
+    }
 
-    await supabase.from("user_api_keys").upsert(
+    const { error } = await supabase.from("user_api_keys").upsert(
       { user_id: user.id, ...keys },
       { onConflict: "user_id" }
     );
 
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    if (error) {
+      setError(`Save failed: ${error.message}`);
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    }
   }
 
   return (
@@ -134,6 +142,10 @@ export function ApiKeyForm() {
           </div>
         ))}
       </div>
+
+      {error && (
+        <p className="text-red-400 text-xs">{error}</p>
+      )}
 
       <button
         type="submit"
