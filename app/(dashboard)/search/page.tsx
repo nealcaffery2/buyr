@@ -77,29 +77,18 @@ export default function SearchPage() {
     setProgress(null);
     setSearchedAddress(address);
 
-    const { data: row, error } = await supabase
-      .from("searches")
-      .insert({ input_address: address, step: "queued", percent: 0 })
-      .select("id")
-      .single();
-
-    if (error || !row) { setState("error"); return; }
-    setSearchId(row.id);
-
-    const scraperUrl = process.env.NEXT_PUBLIC_SCRAPER_API_URL;
-    if (!scraperUrl) {
-      // Dev mode: simulate progress for UI testing
-      simulateProgress();
-      return;
-    }
-
     try {
-      const res = await fetch(`${scraperUrl}/api/search`, {
+      const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, search_id: row.id }),
+        body: JSON.stringify({ address }),
       });
-      if (!res.ok) setState("error");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.search_id) {
+        setState("error");
+        return;
+      }
+      setSearchId(data.search_id);
     } catch {
       setState("error");
     }
