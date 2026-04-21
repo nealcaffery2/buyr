@@ -92,6 +92,7 @@ export function ApiKeyForm() {
     if (error) {
       setError(`Save failed: ${error.message}`);
     } else {
+      setError(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     }
