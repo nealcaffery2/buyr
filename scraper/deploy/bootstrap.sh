@@ -27,6 +27,7 @@ die() { printf '\n\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL is required"
 [[ -n "${SUPABASE_SERVICE_KEY:-}" ]] || die "SUPABASE_SERVICE_KEY is required"
 [[ -n "${GOOGLE_MAPS_API_KEY:-}" ]] || die "GOOGLE_MAPS_API_KEY is required"
+[[ -n "${BATCH_DATA_API_KEY:-}" ]] || die "BATCH_DATA_API_KEY is required"
 
 if [[ -z "${SCRAPER_API_SECRET:-}" ]]; then
   SCRAPER_API_SECRET="$(openssl rand -hex 32)"
@@ -76,6 +77,7 @@ SUPABASE_URL=$SUPABASE_URL
 SUPABASE_SERVICE_KEY=$SUPABASE_SERVICE_KEY
 API_SECRET=$SCRAPER_API_SECRET
 GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY
+BATCH_DATA_API_KEY=$BATCH_DATA_API_KEY
 EOF
 chmod 600 "$REPO_DIR/scraper/.env"
 

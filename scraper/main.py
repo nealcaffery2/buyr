@@ -17,9 +17,7 @@ from supabase import create_client, Client
 
 from config import settings
 from address_parser import parse_address
-from counties.registry import get_scraper
-from opencorporates.client import lookup_company
-from skiptracing.orchestrator import get_contacts
+from batchdata import BatchDataClient, Transfer
 
 app = FastAPI(title="Buyr Scraper API")
 
@@ -75,87 +73,97 @@ async def pipeline(req: SearchRequest):
             await _update(sid, "error", 20, error=f"No wholesalers found for state {state}")
             return
 
-        # ── Step 3: Get user API keys ──────────────────────────────────────
-        api_keys = await _get_api_keys(req.user_id)
+        # ── Step 3: BatchData client ───────────────────────────────────────
+        if not settings.batch_data_api_key:
+            await _update(sid, "error", 20, error="BATCH_DATA_API_KEY not configured")
+            return
+        bd = BatchDataClient(settings.batch_data_api_key)
 
-        # ── Step 4: Scrape county deed records ─────────────────────────────
+        # ── Step 4: Find transfers per wholesaler ──────────────────────────
         await _update(sid, "searching_county_records", 30)
-        scraper = get_scraper(county, state) if county != "unknown" else None
-
-        all_transactions: list[dict] = []
-        if scraper:
-            pct_per_ws = 20 / max(len(wholesalers), 1)
-            for i, ws_name in enumerate(wholesalers):
-                try:
-                    txns = await scraper.search_grantor(ws_name)
-                    for t in txns:
-                        row = {
-                            "grantor_name": t.grantor_name,
-                            "grantee_name": t.grantee_name,
-                            "property_address": t.property_address,
-                            "county": county,
-                            "state": state,
-                            "sale_date": t.sale_date,
-                            "sale_price": t.sale_price,
-                            "deed_type": t.deed_type,
-                            "source_county_url": t.source_url,
-                        }
-                        all_transactions.append(row)
-                    if txns:
-                        supabase.table("transactions").upsert(txns_to_rows(txns, county, state)).execute()
-                except Exception as exc:
-                    logger.warning("Scraper error for wholesaler %r in %s/%s: %s", ws_name, county, state, exc)
-                pct = 30 + int((i + 1) * pct_per_ws)
-                await _update(sid, "searching_county_records", min(pct, 50))
-                await asyncio.sleep(1.2)
+        all_transfers: list[Transfer] = []
+        pct_per_ws = 25 / max(len(wholesalers), 1)
+        for i, ws_name in enumerate(wholesalers):
+            try:
+                transfers = await bd.find_properties_sold_by(ws_name, state, limit=50)
+                all_transfers.extend(transfers)
+                if transfers:
+                    supabase.table("transactions").upsert(
+                        _transfers_to_rows(transfers, county)
+                    ).execute()
+            except Exception as exc:
+                logger.warning("BatchData search failed for %r: %s", ws_name, exc)
+            pct = 30 + int((i + 1) * pct_per_ws)
+            await _update(sid, "searching_county_records", min(pct, 55))
+            await asyncio.sleep(0.3)
 
         # ── Step 5: Rank top buyers ────────────────────────────────────────
-        await _update(sid, "ranking_buyers", 55)
-        top_buyers = _rank_buyers(all_transactions)[:10]
+        await _update(sid, "ranking_buyers", 60)
+        top_buyers = _rank_buyers(all_transfers)[:10]
 
         if not top_buyers:
             await _update(sid, "complete", 100, results=[])
             return
 
-        # ── Step 6: OpenCorporates lookup ──────────────────────────────────
-        await _update(sid, "opencorporates_lookup", 65)
-        oc_key = api_keys.get("opencorporates_api_key", "")
+        # ── Step 6: Skip trace each buyer (LLC contact info) ───────────────
+        await _update(sid, "skip_tracing", 75)
         enriched: list[dict] = []
-        for buyer in top_buyers:
-            llc_info = await lookup_company(buyer["name"], state, oc_key)
-            buyer["registered_agent"] = llc_info.registered_agent
-            buyer["agent_address"] = llc_info.agent_address
-            buyer["officers"] = llc_info.officers or []
+        pct_per_buyer = 20 / max(len(top_buyers), 1)
+        for i, buyer in enumerate(top_buyers):
+            try:
+                owner = await bd.skip_trace_entity(buyer["name"], state)
+            except Exception as exc:
+                logger.warning("Skip trace failed for %r: %s", buyer["name"], exc)
+                owner = None
 
-            # Cache in DB
+            contacts: list[dict] = []
+            if owner:
+                for p in owner.phones:
+                    contacts.append({
+                        "name": owner.name,
+                        "address": owner.mailing_address,
+                        "phone": p.get("number"),
+                        "email": None,
+                        "source": "batchdata",
+                        "confidence": 0.8 if not p.get("dnc") else 0.4,
+                    })
+                for e in owner.emails:
+                    contacts.append({
+                        "name": owner.name,
+                        "address": owner.mailing_address,
+                        "phone": None,
+                        "email": e.get("email"),
+                        "source": "batchdata",
+                        "confidence": 0.75,
+                    })
+                for person in owner.associated_people:
+                    contacts.append({
+                        "name": person.get("name"),
+                        "address": owner.mailing_address,
+                        "phone": None,
+                        "email": None,
+                        "source": "batchdata_associated",
+                        "confidence": 0.3,
+                    })
+
+            buyer["registered_agent"] = owner.name if owner else None
+            buyer["agent_address"] = owner.mailing_address if owner else None
+            buyer["officers"] = owner.associated_people if owner else []
+            buyer["contacts"] = contacts
+
+            # Cache in Supabase
             supabase.table("llc_entities").upsert({
                 "name": buyer["name"],
                 "state": state,
-                "registered_agent": llc_info.registered_agent,
-                "agent_address": llc_info.agent_address,
-                "officers": llc_info.officers,
-                "opencorporates_url": llc_info.opencorporates_url,
+                "registered_agent": buyer["registered_agent"],
+                "agent_address": buyer["agent_address"],
+                "officers": buyer["officers"],
+                "opencorporates_url": None,
             }, on_conflict="name,state").execute()
 
-            enriched.append(buyer)
-            await asyncio.sleep(0.5)
-
-        # ── Step 7: Skip trace ─────────────────────────────────────────────
-        await _update(sid, "skip_tracing", 78)
-        for buyer in enriched:
-            agent_name = buyer.get("registered_agent") or ""
-            agent_addr = buyer.get("agent_address") or ""
-            contacts = await get_contacts(
-                agent_name=agent_name,
-                agent_address=agent_addr,
-                llc_name=buyer["name"],
-                state=state,
-                api_keys=api_keys,
-            )
-            buyer["contacts"] = contacts
-
-            # Store contacts
             for c in contacts:
+                if not (c.get("phone") or c.get("email")):
+                    continue
                 supabase.table("llc_contacts").upsert({
                     "llc_name": buyer["name"],
                     "agent_name": c.get("name"),
@@ -166,12 +174,21 @@ async def pipeline(req: SearchRequest):
                     "confidence": c.get("confidence"),
                 }).execute()
 
-            await asyncio.sleep(0.8)
+            enriched.append(buyer)
+            pct = 75 + int((i + 1) * pct_per_buyer)
+            await _update(sid, "skip_tracing", min(pct, 95))
+            await asyncio.sleep(0.3)
 
         # Attach transactions to each buyer for UI drill-down
         txn_by_buyer: dict[str, list] = defaultdict(list)
-        for t in all_transactions:
-            txn_by_buyer[t["grantee_name"].upper()].append(t)
+        for t in all_transfers:
+            txn_by_buyer[t.grantee_name.upper()].append({
+                "grantor_name": t.grantor_name,
+                "property_address": t.property_address,
+                "sale_date": t.sale_date,
+                "sale_price": t.sale_price,
+                "deed_type": t.deed_type,
+            })
 
         for buyer in enriched:
             buyer["transactions"] = txn_by_buyer.get(buyer["name"].upper(), [])[:20]
@@ -180,39 +197,40 @@ async def pipeline(req: SearchRequest):
         await _update(sid, "complete", 100, results=enriched)
 
     except Exception as exc:
+        logger.exception("Pipeline failed")
         await _update(sid, "error", 0, error=str(exc))
 
 
-def txns_to_rows(txns: list, county: str, state: str) -> list[dict]:
+def _transfers_to_rows(transfers: list[Transfer], county: str) -> list[dict]:
     rows = []
-    for t in txns:
+    for t in transfers:
         rows.append({
             "grantor_name": t.grantor_name,
             "grantee_name": t.grantee_name,
             "property_address": t.property_address,
-            "county": county,
-            "state": state,
+            "county": t.county or county,
+            "state": t.state,
             "sale_date": t.sale_date,
-            "sale_price": float(t.sale_price) if t.sale_price else None,
+            "sale_price": t.sale_price,
             "deed_type": t.deed_type,
             "source_county_url": t.source_url,
         })
     return rows
 
 
-def _rank_buyers(transactions: list[dict]) -> list[dict]:
+def _rank_buyers(transfers: list[Transfer]) -> list[dict]:
     counts: dict[str, dict[str, Any]] = defaultdict(
         lambda: {"count": 0, "dates": [], "prices": []}
     )
-    for t in transactions:
-        key = t.get("grantee_name", "").upper().strip()
-        if not key:
+    for t in transfers:
+        key = (t.grantee_name or "").upper().strip()
+        if not key or key == "UNKNOWN":
             continue
         counts[key]["count"] += 1
-        if t.get("sale_date"):
-            counts[key]["dates"].append(t["sale_date"])
-        if t.get("sale_price"):
-            counts[key]["prices"].append(float(t["sale_price"]))
+        if t.sale_date:
+            counts[key]["dates"].append(t.sale_date)
+        if t.sale_price:
+            counts[key]["prices"].append(float(t.sale_price))
 
     today = date.today()
     scored: list[dict] = []
@@ -250,19 +268,6 @@ async def _get_wholesalers(state: str) -> list[str]:
         .execute()
     )
     return [row["name"] for row in (resp.data or [])]
-
-
-async def _get_api_keys(user_id: str) -> dict:
-    if not user_id:
-        return {}
-    resp = (
-        supabase.table("user_api_keys")
-        .select("*")
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    )
-    return resp.data or {}
 
 
 async def _update(
