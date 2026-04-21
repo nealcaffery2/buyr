@@ -58,7 +58,8 @@ export function ApiKeyForm() {
   function toggleVisible(key: string) {
     setVisible((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -91,6 +92,19 @@ export function ApiKeyForm() {
         <p className="text-slate-400 text-sm">
           Shared across your team. Stored in your Supabase project.
         </p>
+        <div className="mt-3 rounded-lg border border-blue-900/40 bg-blue-950/30 px-3 py-2 text-xs text-blue-200/80">
+          <span className="font-semibold text-blue-300">Tip:</span> the{" "}
+          <span className="font-mono text-blue-300">Google Maps API Key</span>{" "}
+          below is used <span className="italic">server-side</span> by the
+          scraper to parse addresses into counties. For the address{" "}
+          <span className="italic">autocomplete dropdown</span> on the search
+          bar, add{" "}
+          <span className="font-mono text-blue-300">
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+          </span>{" "}
+          to your <span className="font-mono">.env.local</span> (a
+          browser-restricted key with Places API enabled).
+        </div>
       </div>
 
       <div className="space-y-4">

@@ -1,41 +1,61 @@
 "use client";
 
 import { useState } from "react";
+import { Upload, KeyRound } from "lucide-react";
 import { WholesalerUpload } from "@/components/wholesaler-upload";
 import { ApiKeyForm } from "@/components/api-key-form";
 
+const TABS = [
+  { id: "wholesalers", label: "Wholesaler List", icon: Upload },
+  { id: "api-keys", label: "API Keys", icon: KeyRound },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"wholesalers" | "api-keys">(
-    "wholesalers"
-  );
+  const [activeTab, setActiveTab] = useState<TabId>("wholesalers");
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Settings</h1>
-        <p className="text-slate-400 text-sm">
+        <h1 className="text-2xl font-bold tracking-tight text-white">
+          Settings
+        </h1>
+        <p className="mt-1 text-sm text-slate-400">
           Configure your wholesaler list and API credentials.
         </p>
       </div>
 
-      <div className="flex gap-1 bg-slate-900 rounded-lg p-1 w-fit">
-        {(["wholesalers", "api-keys"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            {tab === "wholesalers" ? "Wholesaler List" : "API Keys"}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        className="inline-flex gap-1 rounded-lg border border-slate-800 bg-slate-900/60 p-1 backdrop-blur"
+      >
+        {TABS.map(({ id, label, icon: Icon }) => {
+          const active = activeTab === id;
+          return (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-all ${
+                active
+                  ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Icon size={13} />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {activeTab === "wholesalers" && <WholesalerUpload />}
-      {activeTab === "api-keys" && <ApiKeyForm />}
+      <div className="animate-fade-in">
+        {activeTab === "wholesalers" && <WholesalerUpload />}
+        {activeTab === "api-keys" && <ApiKeyForm />}
+      </div>
     </div>
   );
 }

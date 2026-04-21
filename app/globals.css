@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Places Autocomplete — dark theme */
+.pac-container {
+  background-color: rgb(15 23 42);
+  border: 1px solid rgb(30 41 59);
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+  margin-top: 6px;
+  padding: 4px;
+  font-family: inherit;
+}
+.pac-container:after {
+  display: none;
+}
+.pac-item {
+  background-color: transparent;
+  border-top: none;
+  color: rgb(148 163 184);
+  padding: 8px 10px;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.pac-item:hover,
+.pac-item-selected {
+  background-color: rgb(30 41 59);
+  color: rgb(226 232 240);
+}
+.pac-item-query {
+  color: rgb(248 250 252);
+  font-size: 13px;
+  font-weight: 500;
+}
+.pac-matched {
+  color: rgb(96 165 250);
+  font-weight: 600;
+}
+.pac-icon {
+  filter: invert(70%) sepia(10%) saturate(400%) hue-rotate(180deg);
+  opacity: 0.7;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

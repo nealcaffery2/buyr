@@ -174,7 +174,8 @@ export default function SearchPage() {
             {buyers.map((buyer, i) => (
               <div
                 key={buyer.name}
-                className={`animate-fade-up delay-${Math.min(i, 9)}`}
+                className="animate-fade-up"
+                style={{ animationDelay: `${Math.min(i, 9) * 60}ms` }}
               >
                 <BuyerCard rank={i + 1} buyer={buyer} />
               </div>

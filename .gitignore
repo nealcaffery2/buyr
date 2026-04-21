@@ -1,0 +1,31 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# next.js
+.next
+out
+next-env.d.ts
+
+# typescript
+*.tsbuildinfo
+
+# env
+.env*.local
+.env
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# os
+.DS_Store
+Thumbs.db
+
+# python scraper
+scraper/__pycache__
+scraper/.env
+scraper/venv
+scraper/.venv

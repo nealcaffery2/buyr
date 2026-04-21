@@ -43,7 +43,7 @@ export function BuyerCard({ rank, buyer }: { rank: number; buyer: Buyer }) {
   const hasContacts = buyer.contacts.length > 0 || buyer.registered_agent;
 
   return (
-    <div className="group bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden transition-colors">
+    <div className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/80 backdrop-blur transition-all hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-lg hover:shadow-blue-950/30">
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3">
           {/* Rank badge */}

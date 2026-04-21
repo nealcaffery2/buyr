@@ -31,8 +31,9 @@ export function daysSince(dateStr: string | null): number | null {
 }
 
 export function exportToCsv(buyers: Buyer[], filename: string) {
-  const rows = buyers.map((b) => ({
-    Rank: buyers.indexOf(b) + 1,
+  if (buyers.length === 0) return;
+  const rows = buyers.map((b, i) => ({
+    Rank: i + 1,
     "LLC Name": b.name,
     "Purchase Count": b.purchase_count,
     "Last Purchase": b.last_purchase ?? "",
