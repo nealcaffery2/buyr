@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
-import { SearchBar } from "@/components/search-bar";
-import { ProgressStepper } from "@/components/progress-stepper";
+import { HeroSearch } from "@/components/hero-search";
+import { PipelineStatus } from "@/components/pipeline-status";
 import { BuyerCard } from "@/components/buyer-card";
 import { exportToCsv } from "@/lib/utils";
-import { Download } from "lucide-react";
+import { Download, Users } from "lucide-react";
 
 export type Buyer = {
   name: string;
@@ -32,150 +32,162 @@ export type Buyer = {
   }>;
 };
 
-type ProgressState = {
+type SearchState = "idle" | "running" | "done" | "error";
+
+type ProgressRow = {
   step: string;
   percent: number;
   results?: Buyer[];
-};
-
-const STEP_LABELS: Record<string, string> = {
-  parsing_address: "Parsing address",
-  finding_wholesalers: "Finding wholesaler LLCs",
-  searching_county_records: "Searching county deed records",
-  ranking_buyers: "Ranking top buyers",
-  opencorporates_lookup: "Looking up registered agents",
-  skip_tracing: "Skip tracing contacts",
-  complete: "Complete",
+  error?: string;
 };
 
 export default function SearchPage() {
   const supabase = createBrowserClient();
   const [searchId, setSearchId] = useState<string | null>(null);
-  const [progress, setProgress] = useState<ProgressState | null>(null);
+  const [progress, setProgress] = useState<ProgressRow | null>(null);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<SearchState>("idle");
+  const [searchedAddress, setSearchedAddress] = useState("");
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!searchId) return;
-
     channelRef.current = supabase
       .channel(`search:${searchId}`)
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "searches",
-          filter: `id=eq.${searchId}`,
-        },
+        { event: "UPDATE", schema: "public", table: "searches", filter: `id=eq.${searchId}` },
         (payload) => {
-          const row = payload.new as Record<string, unknown>;
-          const step = row.step as string;
-          const percent = row.percent as number;
-          const results = row.results as Buyer[] | undefined;
-          setProgress({ step, percent, results });
-          if (step === "complete" && results) {
-            setBuyers(results);
-            setLoading(false);
+          const row = payload.new as ProgressRow;
+          setProgress(row);
+          if (row.step === "complete" && row.results) {
+            setBuyers(row.results);
+            setState("done");
           }
-          if (step === "error") {
-            setError((row.error as string) || "Search failed");
-            setLoading(false);
-          }
+          if (row.step === "error") setState("error");
         }
       )
       .subscribe();
-
-    return () => {
-      channelRef.current?.unsubscribe();
-    };
+    return () => { channelRef.current?.unsubscribe(); };
   }, [searchId, supabase]);
 
   async function handleSearch(address: string) {
-    setLoading(true);
-    setError(null);
+    setState("running");
     setBuyers([]);
     setProgress(null);
+    setSearchedAddress(address);
 
-    const { data: searchRow, error: insertErr } = await supabase
+    const { data: row, error } = await supabase
       .from("searches")
       .insert({ input_address: address, step: "queued", percent: 0 })
       .select("id")
       .single();
 
-    if (insertErr || !searchRow) {
-      setError("Failed to start search. Check Supabase connection.");
-      setLoading(false);
+    if (error || !row) { setState("error"); return; }
+    setSearchId(row.id);
+
+    const scraperUrl = process.env.NEXT_PUBLIC_SCRAPER_API_URL;
+    if (!scraperUrl) {
+      // Dev mode: simulate progress for UI testing
+      simulateProgress();
       return;
     }
 
-    setSearchId(searchRow.id);
+    const res = await fetch(`${scraperUrl}/api/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address, search_id: row.id }),
+    });
+    if (!res.ok) setState("error");
+  }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SCRAPER_API_URL}/api/search`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          search_id: searchRow.id,
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      setError("Scraper service unreachable. Is Railway deployed?");
-      setLoading(false);
-    }
+  // UI preview mode when scraper isn't deployed yet
+  function simulateProgress() {
+    const steps = [
+      { step: "parsing_address", percent: 15 },
+      { step: "finding_wholesalers", percent: 25 },
+      { step: "searching_county_records", percent: 45 },
+      { step: "ranking_buyers", percent: 60 },
+      { step: "opencorporates_lookup", percent: 75 },
+      { step: "skip_tracing", percent: 88 },
+      { step: "complete", percent: 100 },
+    ];
+    let i = 0;
+    const tick = () => {
+      if (i >= steps.length) return;
+      setProgress(steps[i] as ProgressRow);
+      if (steps[i].step === "complete") setState("done");
+      i++;
+      if (i < steps.length) setTimeout(tick, 900);
+    };
+    setTimeout(tick, 600);
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Snipe Buyers</h1>
-        <p className="text-slate-400 text-sm">
-          Enter any property address to find the top 10 cash buyers that
-          purchase from wholesalers in that market.
-        </p>
-      </div>
+    <div className="space-y-10">
+      {/* Hero search */}
+      <HeroSearch onSearch={handleSearch} loading={state === "running"} />
 
-      <SearchBar onSearch={handleSearch} loading={loading} />
-
-      {error && (
-        <div className="bg-red-900/30 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">
-          {error}
+      {/* Pipeline progress */}
+      {state === "running" && progress && (
+        <div className="animate-fade-in">
+          <PipelineStatus step={progress.step} percent={progress.percent} />
         </div>
       )}
 
-      {loading && progress && (
-        <ProgressStepper
-          currentStep={progress.step}
-          percent={progress.percent}
-          stepLabels={STEP_LABELS}
-        />
+      {/* Error */}
+      {state === "error" && (
+        <div className="animate-fade-up bg-red-950/40 border border-red-800 text-red-300 rounded-xl px-5 py-4 text-sm">
+          Something went wrong. Check your Supabase connection and scraper URL, then try again.
+        </div>
       )}
 
-      {buyers.length > 0 && (
-        <div className="space-y-4">
+      {/* Results */}
+      {state === "done" && buyers.length > 0 && (
+        <div className="space-y-5 animate-fade-in">
+          {/* Results header bar */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
-              Top {buyers.length} Buyers Found
-            </h2>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-600/30">
+                <Users size={16} className="text-blue-400" />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">
+                  {buyers.length} Buyers Found
+                </p>
+                <p className="text-slate-500 text-xs truncate max-w-xs">
+                  {searchedAddress}
+                </p>
+              </div>
+            </div>
             <button
               onClick={() => exportToCsv(buyers, "buyr-results")}
-              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded-md px-3 py-1.5 transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg px-4 py-2 transition-colors shadow-lg shadow-blue-900/30"
             >
               <Download size={14} />
               Export CSV
             </button>
           </div>
-          <div className="space-y-4">
+
+          {/* Cards */}
+          <div className="space-y-3">
             {buyers.map((buyer, i) => (
-              <BuyerCard key={buyer.name} rank={i + 1} buyer={buyer} />
+              <div
+                key={buyer.name}
+                className={`animate-fade-up delay-${Math.min(i, 9)}`}
+              >
+                <BuyerCard rank={i + 1} buyer={buyer} />
+              </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {state === "done" && buyers.length === 0 && (
+        <div className="animate-fade-up text-center py-16">
+          <p className="text-slate-500 text-sm">
+            No buyers found for this market yet. Try a different address or add more wholesalers in Settings.
+          </p>
         </div>
       )}
     </div>

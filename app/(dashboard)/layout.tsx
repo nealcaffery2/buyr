@@ -7,17 +7,23 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) redirect("/");
 
-  if (!user) redirect("/");
+  try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  return (
-    <div className="min-h-screen bg-slate-950">
-      <DashboardNav user={user} />
-      <main className="max-w-7xl mx-auto px-4 py-8">{children}</main>
-    </div>
-  );
+    if (!user) redirect("/");
+
+    return (
+      <div className="min-h-screen bg-slate-950">
+        <DashboardNav user={user} />
+        <main className="max-w-5xl mx-auto px-4 py-10">{children}</main>
+      </div>
+    );
+  } catch {
+    redirect("/");
+  }
 }

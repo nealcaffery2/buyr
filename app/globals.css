@@ -28,10 +28,43 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+@layer utilities {
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  body {
-    @apply bg-background text-foreground;
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.4s ease both;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease both;
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right 0.35s ease both;
+  }
+
+  /* Staggered card delays */
+  .delay-0  { animation-delay: 0ms; }
+  .delay-1  { animation-delay: 60ms; }
+  .delay-2  { animation-delay: 120ms; }
+  .delay-3  { animation-delay: 180ms; }
+  .delay-4  { animation-delay: 240ms; }
+  .delay-5  { animation-delay: 300ms; }
+  .delay-6  { animation-delay: 360ms; }
+  .delay-7  { animation-delay: 420ms; }
+  .delay-8  { animation-delay: 480ms; }
+  .delay-9  { animation-delay: 540ms; }
 }
