@@ -86,19 +86,17 @@ export default function SearchPage() {
     if (error || !row) { setState("error"); return; }
     setSearchId(row.id);
 
-    const scraperUrl = process.env.NEXT_PUBLIC_SCRAPER_API_URL;
-    if (!scraperUrl) {
-      // Dev mode: simulate progress for UI testing
-      simulateProgress();
-      return;
-    }
-
     try {
-      const res = await fetch(`${scraperUrl}/api/search`, {
+      const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, search_id: row.id }),
       });
+      if (res.status === 503) {
+        // Scraper not configured — simulate for UI preview
+        simulateProgress();
+        return;
+      }
       if (!res.ok) setState("error");
     } catch {
       setState("error");
